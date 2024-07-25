@@ -1,0 +1,53 @@
+---
+
+- name: Add Jenkins repository
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repo_url }}"
+    dest: /etc/yum.repos.d/jenkins.repo
+
+- name: Download Jenkins GPG key
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repo_key_url }}"
+    dest: /tmp/jenkins.io.key
+
+- name: Import Jenkins GPG key
+  ansible.builtin.shell:
+    cmd: rpm --import /tmp/jenkins.io.key
+  become: yes
+  ignore_errors: yes
+
+
+- name: Ensure the required packages are installed
+  yum:
+    name:
+      - java-11-openjdk
+      - wget
+      - git
+    state: present
+
+
+- name: Install Jenkins
+  package:
+    name: jenkins
+    state: present
+  notify:
+    - Start Jenkins service
+
+- name: Install firewalld
+  yum:
+    name: firewalld
+    state: present
+
+- name: Ensure firewalld is running and enabled
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Allow port 8080/tcp through the firewall
+  firewalld:
+    port: 8080/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+
